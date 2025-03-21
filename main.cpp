@@ -2,43 +2,49 @@
 #include "include/ImGUI/backends/imgui_impl_glfw.h"
 #include "include/ImGUI/backends/imgui_impl_opengl3.h"
 #include <stdio.h>
-#define GL_SILENCE_DEPRECATION
 #include <iostream>
-#include <math.h>
 #include <ostream>
 #include <GLFW/glfw3.h>
 #include <ctime>
 #include <curl/curl.h>
 #include "Client.h"
 #include <fstream>
+
+#include "JSONHelper.h"
 namespace fs = std::filesystem;
 #include <filesystem>
 time_t fresh_time = time(NULL);
 time_t last_time = fresh_time;
+#define GL_SILENCE_DEPRECATION
 #define WINDOW_HEIGHT 720
 #define WINDOW_WIDTH 1290
 static void glfw_error_callback(int error, const char* description)
 {
     fprintf(stderr, "GLFW Error %d: %s\n", error, description);
 }
-#define SUCCESS_BUTTON ImVec2
-void displayFilesDirectory(const std::string& dirPath) {
+
+auto selected_json_path = std::string();
+std::ifstream f;
+json edit_file = nullptr;
+
+void render_edit_window(bool &show_edit_window);
+
+void displayFilesDirectory(const std::string& dirPath, bool &show_edit_window) {
     // Loop through the files in the directory
     for (const auto& entry : fs::directory_iterator(dirPath)) {
         if (entry.is_regular_file()) {
 
             std::string fileName = entry.path().filename().string();
-            std::string filePath = entry.path().string();
+
             ImGui::Text("%s", fileName.c_str());
-            ImGui::SameLine(0, ImGui::GetWindowWidth() - 50);  // 10 is the spacing between buttons
+            ImGui::SameLine(0, 30);  // 10 is the spacing between buttons
 
             if (ImGui::Button("Edit")) {
                 std::cout << "Edit button clicked for: " << fileName << std::endl;
+                selected_json_path = entry.path();
+                show_edit_window = !show_edit_window;
             }
-
-            ImGui::SameLine(0, ImGui::GetWindowWidth() - 40);  // 10 is the spacing between buttons
-
-
+            ImGui::SameLine();
             if (ImGui::Button("Delete")) {
                 std::cout << "Delete button clicked for: " << fileName << std::endl;
             }
@@ -52,7 +58,8 @@ void displayFilesDirectory(const std::string& dirPath) {
 // Main code
 int main(int, char**)
 {
-    Client* client = new Client();
+
+    std::shared_ptr<Client> client = std::make_shared<Client>();
 
     if (client->connect()) {
         client->connected = true;
@@ -92,6 +99,10 @@ int main(int, char**)
     ImVec4 clear_color = ImVec4(0.45f, 0.55f, 0.60f, 1.00f);
 
     int serverCheckDelay = 5;
+    bool show_edit_window = false;
+
+    JSONHelper jsonHelper;
+
 
     while (!glfwWindowShouldClose(window))
     {
@@ -116,10 +127,24 @@ int main(int, char**)
             }
         }
         // Create a window called "My First Tool", with a menu bar.
+        if (show_edit_window) {
+            render_edit_window(show_edit_window);
+        }
+        ImGui::Begin("ImGui Bot", nullptr, ImGuiWindowFlags_MenuBar);
+        ImGui::BeginMenuBar();
+        if (ImGui::BeginMenu("Datoteka")) {
+            if (ImGui::MenuItem("Uvozi datoteko")) {
 
-        ImGui::Begin("AVTO NET Robot", nullptr, ImGuiWindowFlags_MenuBar);
-        displayFilesDirectory(dirPath);
+            }
+            if (ImGui::MenuItem("Ustvari nov vnos")) {
 
+            }
+            ImGui::EndMenu();
+        }
+
+        ImGui::EndMenuBar();
+
+        displayFilesDirectory(dirPath, show_edit_window);
         // Footer separator
         ImGui::Spacing();
         ImGui::Separator();
@@ -153,7 +178,50 @@ int main(int, char**)
 
     glfwDestroyWindow(window);
     glfwTerminate();
-    free(client);
     return 0;
 }
 
+
+void render_edit_window(bool &show_edit_window) {
+    if (!f.is_open()) {  // Check if the file stream is uninitialized (not open)
+        f.open(selected_json_path);
+
+        if (!f) {  // Check if the file was successfully opened
+            std::cerr << "Failed to open file: " << selected_json_path << std::endl;
+        }
+        edit_file = json::parse(f);
+
+
+    }
+    ImGui::Begin("Urejanje vnosa", nullptr, ImGuiWindowFlags_MenuBar);
+    ImGui::Spacing();
+
+    size_t index = 0;
+    for (const auto& entry : edit_file[0].items()) {
+
+    }
+
+    ImGui::Spacing();
+    ImGui::Separator();
+
+
+    // Footer separator
+    ImGui::Spacing();
+    ImGui::Separator();
+    ImGui::Spacing();
+
+    // Footer section
+    float footer_height = 30.0f;
+    ImGui::SetCursorPosY(ImGui::GetWindowHeight() - footer_height - ImGui::GetStyle().WindowPadding.y);
+    ImGui::BeginChild("Footer", ImVec2(0, footer_height), true, ImGuiWindowFlags_NoScrollbar);
+
+    // Footer content
+    ImGui::Text(show_edit_window ? "Edit window turned on" : "Edit window turned off");
+    ImGui::SameLine(ImGui::GetWindowWidth() - 100);
+    // Close button
+    if (ImGui::Button("Zapri"))
+        show_edit_window = !show_edit_window;
+        f.close();
+    ImGui::EndChild();
+    ImGui::End();
+}

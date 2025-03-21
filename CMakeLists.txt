@@ -14,6 +14,8 @@ set(IMGUI_SOURCES
         ${CMAKE_SOURCE_DIR}/include/ImGUI/backends/imgui_impl_opengl3.cpp
         Client.cpp
         Client.h
+        JSONHelper.cpp
+        JSONHelper.h
 )
 include(FetchContent)
 
