@@ -16,6 +16,8 @@ set(IMGUI_SOURCES
         Client.h
         JSONHelper.cpp
         JSONHelper.h
+        Car.cpp
+        Car.h
 )
 include(FetchContent)
 
